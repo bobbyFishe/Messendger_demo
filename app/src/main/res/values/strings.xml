@@ -1,0 +1,19 @@
+<resources>
+
+    <string name="text_view_present">С возвращением!</string>
+    <string name="text_edit_email">Электронная почта</string>
+    <string name="edit_text_password">Пароль</string>
+    <string name="btn_enter">Войти</string>
+    <string name="text_btn_not_account">Нет аккаунта? Зарегистрироваться</string>
+    <string name="text_view_lets_go">Присоединяйся</string>
+    <string name="edit_text_name_chat">Имя в чате</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_pass">Пароль</string>
+    <string name="btn_create_account">Создать аккаунт</string>
+    <string name="app_name">AndroidMessendger</string>
+    <string name="btn_new_chat">new_chat</string>
+    <string name="text_view_hi">Привет </string>
+    <string name="btn_menu">Меню</string>
+    <string name="option_1">Настройки профиля</string>
+    <string name="option_2">Выйти</string>
+</resources>
