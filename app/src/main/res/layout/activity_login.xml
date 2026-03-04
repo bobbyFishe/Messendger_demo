@@ -31,7 +31,7 @@
             android:layout_gravity="center"
             android:layout_marginBottom="32dp"
             android:text="@string/text_view_present"
-            android:textColor="#FFFFFF"
+            android:textColor="#68A896"
             android:textSize="28sp"
             android:textStyle="bold" />
 
@@ -96,7 +96,7 @@
             android:layout_marginTop="32dp"
             android:backgroundTint="#FFFFFF"
             android:text="@string/btn_enter"
-            android:textColor="#FF4B2B"
+            android:textColor="#FF6D64"
             android:textSize="18sp"
             android:textStyle="bold"
             app:cornerRadius="28dp"
@@ -113,7 +113,7 @@
             android:clickable="true"
             android:focusable="true"
             android:text="@string/text_btn_not_account"
-            android:textColor="#FFFFFF"
+            android:textColor="#68A896"
             android:textSize="14sp" />
 
     </LinearLayout>

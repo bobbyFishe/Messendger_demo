@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@drawable/chats_1"
+    android:layout_width="match_parent"
+    android:padding="4dp"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/text_avatar_placeholder"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:background="@drawable/circle_background"
+        android:gravity="center"
+        android:textColor="@color/black"
+        android:textSize="20sp"
+        android:fontFamily="@font/alegreya_sc_bold_italic"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="A" />
+
+    <TextView
+        android:id="@+id/item_user_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/alegreya_sc_bold_italic"
+        android:text="Данис"
+        android:textSize="18sp"
+        android:paddingStart="5dp"
+        android:textColor="@color/black"
+        app:layout_constraintStart_toEndOf="@+id/text_avatar_placeholder"
+        app:layout_constraintTop_toTopOf="parent">
+
+    </TextView>
+
+    <TextView
+        android:id="@+id/item_user_messages"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/roboto"
+        android:maxLines="1"
+        android:paddingStart="5dp"
+        android:text="Привет. Как дела? Привет. Как дела? Привет. Как дела? Привет. Как дела?"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/text_avatar_placeholder"
+        app:layout_constraintTop_toBottomOf="@+id/item_user_name">
+
+    </TextView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,5 +1,7 @@
 package com.example.messendger_demo;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -28,7 +30,9 @@ import java.util.Objects;
 public class RegisterActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
-    TextInputLayout inputEmail;
+    private TextInputLayout inputEmail, inputUser, inputPass;
+    private TextView title;
+    private MaterialButton btnReg;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,11 +43,11 @@ public class RegisterActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        TextView title = findViewById(R.id.title);
-        TextInputLayout inputUser = findViewById(R.id.inputUserLayout);
+        title = findViewById(R.id.title);
+        inputUser = findViewById(R.id.inputUserLayout);
         inputEmail = findViewById(R.id.inputEmailLayout);
-        TextInputLayout inputPass = findViewById(R.id.inputPassLayout);
-        MaterialButton btnReg = findViewById(R.id.btnRegister);
+        inputPass = findViewById(R.id.inputPassLayout);
+        btnReg = findViewById(R.id.btnRegister);
         mAuth = FirebaseAuth.getInstance();
 
         btnReg.setOnClickListener(view -> {
@@ -79,6 +83,7 @@ public class RegisterActivity extends AppCompatActivity {
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             db.collection("users")
                     .whereEqualTo("name", nameStr)
+                    .limit(1)
                     .get()
                     .addOnCompleteListener(task -> {
                         if(task.isSuccessful()) {
@@ -125,7 +130,14 @@ public class RegisterActivity extends AppCompatActivity {
                         db.collection("users").document(userId)
                                 .set(userMap)
                                 .addOnCompleteListener(aVoid -> {
-                                    Toast.makeText(this, "Регистрация успешна!", Toast.LENGTH_SHORT).show();
+                                    if(aVoid.isSuccessful()) {
+                                        SharedPreferences prefs = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+                                        prefs.edit().putString("user_name", name).apply();
+                                        Toast.makeText(this, "Регистрация успешна!", Toast.LENGTH_SHORT).show();
+                                        Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                                        startActivity(intent);
+                                        finish();
+                                    }
                                 });
                     } else {
                         String error = Objects.requireNonNull(task.getException()).getMessage();

@@ -1,13 +1,11 @@
 package com.example.messendger_demo;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,14 +19,32 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 public class LoginActivity extends AppCompatActivity {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+
+        if (mAuth.getCurrentUser() != null) {
+            // Достаем имя из памяти телефона
+            SharedPreferences prefs = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+
+            // "Пользователь" — это значение, если в памяти еще ничего нет
+            String savedName = prefs.getString("user_name", "Пользователь");
+
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent.putExtra("user_name", savedName);
+            startActivity(intent);
+            finish();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,8 +78,26 @@ public class LoginActivity extends AppCompatActivity {
             mAuth.signInWithEmailAndPassword(emailStr, passStr)
                     .addOnCompleteListener(this, task -> {
                         if(task.isSuccessful()) {
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                            finish();
+                            String uid = Objects.requireNonNull(mAuth.getCurrentUser()).getUid();
+                            db.collection("users").document(uid).get()
+                                            .addOnSuccessListener(documentSnapshot -> {
+                                                String name = "Пользователь";
+                                                if(documentSnapshot.exists()) {
+                                                    name = documentSnapshot.getString("name");
+                                                }
+                                                getSharedPreferences("MyPrefs", MODE_PRIVATE)
+                                                        .edit()
+                                                        .putString("user_name", name)
+                                                        .apply();
+                                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                                startActivity(intent);
+                                                finish();
+                                            })
+                                    .addOnFailureListener(e -> {
+                                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                        finish();
+                                    });
+
                         } else {
                             String errorMsg = task.getException() != null ? task.getException().getMessage() : "Ошибка входа";
                             Log.e("AUTH", "Ошибка: " + errorMsg);
@@ -80,6 +114,7 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            finish();
         });
     }
 

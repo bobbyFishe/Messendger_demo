@@ -13,7 +13,7 @@
         <item name="shapeAppearance">@null</item>
         <item name="backgroundTint">@android:color/transparent</item>
 
-        <item name="android:colorBackground">#648C36</item>
+        <item name="android:colorBackground">#fad4cd</item>
         <!-- Цвет текста и шрифт -->
         <item name="android:textColor">#204E7F</item> <!-- Белый текст -->
         <item name="android:fontFamily">@font/caveat_medium</item>

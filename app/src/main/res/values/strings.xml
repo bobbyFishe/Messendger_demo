@@ -16,4 +16,8 @@
     <string name="btn_menu">Меню</string>
     <string name="option_1">Настройки профиля</string>
     <string name="option_2">Выйти</string>
+    <string name="btn_avatar">avatar</string>
+    <string name="editText_new_chat">Добавить новый чат</string>
+    <string name="editText_get_new_chat">Введи имя пользователя</string>
+    <string name="btn_search">Поиск</string>
 </resources>
