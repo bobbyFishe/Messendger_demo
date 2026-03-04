@@ -1,4 +1,5 @@
 package com.example.messendger_demo;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -11,18 +12,33 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class NewContactDialog extends DialogFragment {
     private Button btnSearch;
     private EditText searchingName;
+
+    public interface OnContactFoundListener {
+        void onContactFound(String name, String uid);
+    }
+
+    private OnContactFoundListener listener;
+
+    public void setOnContactFoundListener(OnContactFoundListener listener) {
+        this.listener = listener;
+    }
+
+
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.dialog_search_contact, container, false);
         btnSearch = view.findViewById(R.id.btnSearch);
         searchingName = view.findViewById(R.id.editText_searching_name);
+
         btnSearch.setOnClickListener(view1 -> searchNewContact());
         return view;
     }
@@ -42,7 +58,9 @@ public class NewContactDialog extends DialogFragment {
                 .addOnCompleteListener(task -> {
                     if(task.isSuccessful()) {
                         if (task.getResult() != null && !task.getResult().isEmpty()) {
-                            new_chats_generate();
+                            if(listener != null) {
+                                listener.onContactFound(userName, task.getResult().getDocuments().get(0).getId());
+                            }
                             dismiss();
                         } else {
                             Toast.makeText(requireContext(), "Пользователь не найден", Toast.LENGTH_SHORT).show();
@@ -52,9 +70,4 @@ public class NewContactDialog extends DialogFragment {
                     }
                 });
     }
-
-    public void new_chats_generate() {
-        Toast.makeText(requireContext(), "Новый чат создан", Toast.LENGTH_SHORT).show();
-    }
-
 }
