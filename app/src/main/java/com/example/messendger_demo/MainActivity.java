@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         chats = findViewById(R.id.recycler_view_contacts);
         btn_menu = findViewById(R.id.imageButton_menu);
         newChat = findViewById(R.id.floatingActionButton_new_chat);
-//        loadUserData();
+
         adapter = new UserAdapter(names);
         chats.setLayoutManager(new LinearLayoutManager(this));
         chats.setAdapter(adapter);
@@ -82,13 +82,16 @@ public class MainActivity extends AppCompatActivity {
         String[] uids = {myUID, partnerUid};
         Arrays.sort(uids);
         String chatId = uids[0] + "_" + uids[1];
+        SharedPreferences prefs = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        String myName = prefs.getString("user_name", "Пользователь");
 
         Map<String, Object> chatData = new HashMap<>();
         chatData.put("members", Arrays.asList(myUID,partnerUid));
         chatData.put("lastMessage", "Чат создан");
         chatData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
-        chatData.put("chatName", partnerName);
+        chatData.put("name_" + myUID, myName);
+        chatData.put("name_" + partnerUid, partnerName);
 
         db.collection("chats").document(chatId)
                 .set(chatData, com.google.firebase.firestore.SetOptions.merge())
@@ -128,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         return prefs.getString("user_name", "Гость");
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private void listenForChats() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         String myUID = FirebaseAuth.getInstance().getUid();
@@ -144,11 +148,17 @@ public class MainActivity extends AppCompatActivity {
                     if(value != null) {
                         names.clear();
                         for (QueryDocumentSnapshot doc : value) {
-                            String chatName = doc.getString("chatName");
-                            if (chatName != null) {
-                                names.add(chatName);
+                            List<String> members = (List<String>) doc.get("members");
+                            if(members != null) {
+                                for (String mUid : members) {
+                                    if (!mUid.equals(myUID)) {
+                                        String partnerName = doc.getString("name_" + mUid);
+                                        names.add(partnerName != null ? partnerName : "Собеседник");
+                                    }
+                                }
                             }
                         }
+                        adapter.notifyDataSetChanged();
                     }
                 }));
     }
