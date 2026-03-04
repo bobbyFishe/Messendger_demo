@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
             });
             dialog.show(getSupportFragmentManager(), "newContactDialog");
         });
+        listenForChats();
     }
 
     private void createNewChatInFirestore(String partnerName, String partnerUid) {
@@ -126,20 +128,28 @@ public class MainActivity extends AppCompatActivity {
         return prefs.getString("user_name", "Гость");
     }
 
-//    private void loadUserData() {
-//        FirebaseFirestore db = FirebaseFirestore.getInstance();
-//        String uid = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
-//        TextView tvName = findViewById(R.id.text_view_name);
-//
-//        db.collection("users").document(uid).get()
-//                .addOnSuccessListener(documentSnapshot -> {
-//                    if (documentSnapshot.exists()) {
-//                        String name = documentSnapshot.getString("name");
-//                        tvName.setText(name);
-//                    }
-//                })
-//                .addOnFailureListener(e -> {
-//                    Log.e("Firestore", "Ошибка загрузки данных", e);
-//                });
-//    }
+    private void listenForChats() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String myUID = FirebaseAuth.getInstance().getUid();
+
+        if(myUID == null) return;
+
+        db.collection("chats")
+                .whereArrayContains("members", myUID)
+                .addSnapshotListener(((value, error) -> {
+                    if(error != null) {
+                        Log.e("Firestore", "Ошибка прослушивания", error);
+                        return;
+                    }
+                    if(value != null) {
+                        names.clear();
+                        for (QueryDocumentSnapshot doc : value) {
+                            String chatName = doc.getString("chatName");
+                            if (chatName != null) {
+                                names.add(chatName);
+                            }
+                        }
+                    }
+                }));
+    }
 }
