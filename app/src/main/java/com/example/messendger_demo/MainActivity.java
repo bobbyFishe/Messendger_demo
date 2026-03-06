@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btn_menu;
     private RecyclerView chats;
     private FloatingActionButton newChat;
-    private List<String> names;
+    private List<ChatModel> chatList = new ArrayList<>();
     private UserAdapter adapter;
 
     @SuppressLint("MissingInflatedId")
@@ -50,13 +50,13 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        names = new ArrayList<>();
+
         TextView tvName = findViewById(R.id.text_view_name);
         chats = findViewById(R.id.recycler_view_contacts);
         btn_menu = findViewById(R.id.imageButton_menu);
         newChat = findViewById(R.id.floatingActionButton_new_chat);
 
-        adapter = new UserAdapter(names);
+        adapter = new UserAdapter(chatList);
         chats.setLayoutManager(new LinearLayoutManager(this));
         chats.setAdapter(adapter);
         tvName.setText(authentication());
@@ -79,6 +79,10 @@ public class MainActivity extends AppCompatActivity {
         if(myUID == null) {
             return;
         }
+        if(myUID.equals(partnerUid)) {
+            Toast.makeText(this, "Чат с самим собой не создается", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String[] uids = {myUID, partnerUid};
         Arrays.sort(uids);
         String chatId = uids[0] + "_" + uids[1];
@@ -87,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         Map<String, Object> chatData = new HashMap<>();
         chatData.put("members", Arrays.asList(myUID,partnerUid));
-        chatData.put("lastMessage", "Чат создан");
+        chatData.put("lastMessage", "");
         chatData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
         chatData.put("name_" + myUID, myName);
@@ -146,16 +150,20 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     if(value != null) {
-                        names.clear();
+                        chatList.clear();
                         for (QueryDocumentSnapshot doc : value) {
                             List<String> members = (List<String>) doc.get("members");
                             if(members != null) {
                                 for (String mUid : members) {
                                     if (!mUid.equals(myUID)) {
                                         String partnerName = doc.getString("name_" + mUid);
-                                        names.add(partnerName != null ? partnerName : "Собеседник");
+                                        String name = partnerName != null ? partnerName : "Собеседник";
+                                        String lastMsg = doc.getString("lastMessage");
+                                        String id = doc.getId();
+                                        chatList.add(new ChatModel(name, id, lastMsg != null ? lastMsg : ""));
                                     }
                                 }
+                                adapter.notifyDataSetChanged();
                             }
                         }
                         adapter.notifyDataSetChanged();
