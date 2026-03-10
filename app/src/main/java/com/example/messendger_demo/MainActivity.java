@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton newChat;
     private List<ChatModel> chatList = new ArrayList<>();
     private UserAdapter adapter;
+    private ListenerRegistration chatListener;
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -50,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+//        Log.d("PATH", "Путь к данным: " + getFilesDir().getAbsolutePath());
+//        Log.d("PATH", "Путь к APK: " + getPackageResourcePath());
 
         TextView tvName = findViewById(R.id.text_view_name);
         chats = findViewById(R.id.recycler_view_contacts);
@@ -117,6 +121,9 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Опции", Toast.LENGTH_SHORT).show();
                 return true;
             } else if( id == R.id.item_exit) {
+                if (chatListener != null) {
+                    chatListener.remove();
+                }
                 FirebaseAuth.getInstance().signOut();
                 getSharedPreferences("MyPrefs", MODE_PRIVATE).edit().clear().apply();
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
@@ -142,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(myUID == null) return;
 
-        db.collection("chats")
+        chatListener = db.collection("chats")
                 .whereArrayContains("members", myUID)
                 .addSnapshotListener(((value, error) -> {
                     if(error != null) {
@@ -159,8 +166,12 @@ public class MainActivity extends AppCompatActivity {
                                         String partnerName = doc.getString("name_" + mUid);
                                         String name = partnerName != null ? partnerName : "Собеседник";
                                         String lastMsg = doc.getString("lastMessage");
+                                        if (lastMsg != null) {
+                                            String decryptedLastMsg = CryptoManager.decrypt(lastMsg);
+                                            lastMsg = (decryptedLastMsg != null) ? decryptedLastMsg : lastMsg;
+                                        }
                                         String id = doc.getId();
-                                        chatList.add(new ChatModel(name, id, lastMsg != null ? lastMsg : ""));
+                                        chatList.add(new ChatModel(name, id, lastMsg != null ? lastMsg : "", mUid));
                                     }
                                 }
                                 adapter.notifyDataSetChanged();

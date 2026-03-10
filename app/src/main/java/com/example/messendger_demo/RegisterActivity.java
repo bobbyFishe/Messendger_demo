@@ -122,10 +122,12 @@ public class RegisterActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task ->  {
                     if(task.isSuccessful()) {
                         String userId = mAuth.getCurrentUser().getUid();
+                        String publicKeyStr = CryptoManager.generateKeysAndGetPublic();
                         Map<String, Object> userMap = new HashMap<>();
                         userMap.put("name", name);
                         userMap.put("email", email);
                         userMap.put("uid", userId);
+                        userMap.put("publicKey", publicKeyStr);
 
                         db.collection("users").document(userId)
                                 .set(userMap)

@@ -3,8 +3,10 @@ package com.example.messendger_demo;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -16,6 +18,12 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -34,6 +42,9 @@ public class ChatActivity extends AppCompatActivity {
     private TextInputEditText editMessage;
     private FloatingActionButton btnSend;
     private String myUid;
+    private String partnerPublicKey;
+    private String partnerUid;
+    private DatabaseReference messageRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +57,14 @@ public class ChatActivity extends AppCompatActivity {
             return insets;
         });
         String chatId = getIntent().getStringExtra("chat_id");
+        partnerUid = getIntent().getStringExtra("partner_uid");
+        loadPartnerPublicKey();
         messageList = new ArrayList<>();
         myUid = FirebaseAuth.getInstance().getUid();
+        if (chatId != null) {
+            messageRef = FirebaseDatabase.getInstance("https://messendger-demo-default-rtdb.europe-west1.firebasedatabase.app/").getReference("chats")
+                    .child(chatId).child("messages");
+        }
         editMessage = findViewById(R.id.edit_message);
         btnSend = findViewById(R.id.btn_send);
         recyclerView = findViewById(R.id.recycler_messages);
@@ -76,61 +93,70 @@ public class ChatActivity extends AppCompatActivity {
 
         btnSend.setOnClickListener(view -> {
             String text = Objects.requireNonNull(editMessage.getText()).toString().trim();
-            if(!text.isEmpty()) {
+            if(!text.isEmpty() && partnerPublicKey != null) {
+                String encryptedText = CryptoManager.encrypt(text, partnerPublicKey);
                 FirebaseFirestore db = FirebaseFirestore.getInstance();
                 Map<String, Object> msgMap = new HashMap<>();
-                msgMap.put("text", text);
+                msgMap.put("text", encryptedText);
                 msgMap.put("senderId", myUid);
-                msgMap.put("timestamp", FieldValue.serverTimestamp());
-                db.collection("chats").document(chatId)
-                        .update("lastMessage", text, "timestamp", FieldValue.serverTimestamp())
-                        .addOnFailureListener(e -> Log.e("Firestore", "Ошибка обновления превью", e));
-                db.collection("chats").document(chatId)
-                        .collection("messages")
-                        .add(msgMap)
-                        .addOnSuccessListener(documentReference -> {
-                            editMessage.setText(""); // Очищаем поле только после успеха
+                msgMap.put("timestamp", ServerValue.TIMESTAMP);
+                messageRef.push().setValue(msgMap)
+                        .addOnSuccessListener(aVoid -> editMessage.setText(""))
+                        .addOnFailureListener(e -> {
+                            Log.e("RTDB", "ОШИБКА RTDB: " + e.getMessage());
+                            Toast.makeText(this, "Ошибка сети", Toast.LENGTH_SHORT).show();
                         });
-
-                recyclerView.scrollToPosition(messageList.size() - 1);
-                editMessage.setText("");
+                FirebaseFirestore.getInstance().collection("chats").document(chatId)
+                        .update("lastMessage", encryptedText, "timestamp", FieldValue.serverTimestamp());
+            } else if (partnerPublicKey == null) {
+                Toast.makeText(this, "Ключ еще не загружен...", Toast.LENGTH_SHORT).show();
             }
         });
-        listenForMessages(chatId);
+        listenForMessages();
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private void listenForMessages(String chatId) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-        // Слушаем ВЛОЖЕННУЮ коллекцию messages внутри конкретного чата
-        db.collection("chats")
-                .document(chatId)
-                .collection("messages")
-                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING) // Сортировка по времени
-                .addSnapshotListener((value, error) -> {
-                    if (error != null) {
-                        Log.e("Firestore", "Ошибка прослушивания сообщений", error);
-                        return;
-                    }
-
-                    if (value != null) {
-                        messageList.clear();
-                        for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
-                            // Превращаем документ из базы в объект MessageModel
-                            MessageModel msg = doc.toObject(MessageModel.class);
-                            messageList.add(msg);
-                        }
-
-                        // Обновляем список на экране
-                        adapter.notifyDataSetChanged();
-
-                        // Автоматически прокручиваем в самый низ к новому сообщению
-                        if (messageList.size() > 0) {
-                            recyclerView.scrollToPosition(messageList.size() - 1);
-                        }
+    private void loadPartnerPublicKey() {
+        if (partnerUid == null) return;
+        FirebaseFirestore.getInstance().collection("users").document(partnerUid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        partnerPublicKey = documentSnapshot.getString("publicKey");
                     }
                 });
+    }
+
+    private void listenForMessages() {
+        if (messageRef == null) return;
+
+        messageRef.addValueEventListener(new ValueEventListener() {
+            @SuppressLint("NotifyDataSetChanged")
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                messageList.clear();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    // Превращаем JSON из RTDB в модель
+                    MessageModel msg = ds.getValue(MessageModel.class);
+
+                    if (msg != null) {
+                        // Расшифровываем, если сообщение не от нас
+                        if (!msg.senderId.equals(myUid)) {
+                            String decrypted = CryptoManager.decrypt(msg.text);
+                            msg.text = (decrypted != null) ? decrypted : "[Ошибка расшифровки]";
+                        }
+                        messageList.add(msg);
+                    }
+                }
+                adapter.notifyDataSetChanged();
+                if (!messageList.isEmpty()) {
+                    recyclerView.scrollToPosition(messageList.size() - 1);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("RTDB", "Ошибка прослушивания: " + error.getMessage());
+            }
+        });
     }
 
 
