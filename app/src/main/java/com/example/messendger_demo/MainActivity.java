@@ -20,6 +20,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.room.Room;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,8 +41,11 @@ public class MainActivity extends AppCompatActivity {
     private List<ChatModel> chatList = new ArrayList<>();
     private UserAdapter adapter;
     private ListenerRegistration chatListener;
+    private MessageDao messageDao;
+    private String myUID;
 
-    @SuppressLint("MissingInflatedId")
+
+    @SuppressLint({"MissingInflatedId", "NotifyDataSetChanged"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,11 +56,12 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-//        Log.d("PATH", "Путь к данным: " + getFilesDir().getAbsolutePath());
-//        Log.d("PATH", "Путь к APK: " + getPackageResourcePath());
-
+        AppDatabase db = Room.databaseBuilder(getApplicationContext(),
+                AppDatabase.class, "chat_database").allowMainThreadQueries().build();
+        messageDao = db.messageDao();
         TextView tvName = findViewById(R.id.text_view_name);
         chats = findViewById(R.id.recycler_view_contacts);
+        myUID = FirebaseAuth.getInstance().getUid();
         btn_menu = findViewById(R.id.imageButton_menu);
         newChat = findViewById(R.id.floatingActionButton_new_chat);
 
@@ -74,6 +79,12 @@ public class MainActivity extends AppCompatActivity {
             dialog.show(getSupportFragmentManager(), "newContactDialog");
         });
         listenForChats();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        listenForChats(); // Перерисовываем список с актуальными данными из Room
     }
 
     private void createNewChatInFirestore(String partnerName, String partnerUid) {
@@ -95,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
 
         Map<String, Object> chatData = new HashMap<>();
         chatData.put("members", Arrays.asList(myUID,partnerUid));
-        chatData.put("lastMessage", "");
         chatData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
         chatData.put("name_" + myUID, myName);
@@ -159,22 +169,23 @@ public class MainActivity extends AppCompatActivity {
                     if(value != null) {
                         chatList.clear();
                         for (QueryDocumentSnapshot doc : value) {
+                            String chatId = doc.getId();
                             List<String> members = (List<String>) doc.get("members");
                             if(members != null) {
                                 for (String mUid : members) {
                                     if (!mUid.equals(myUID)) {
-                                        String partnerName = doc.getString("name_" + mUid);
-                                        String name = partnerName != null ? partnerName : "Собеседник";
-                                        String lastMsg = doc.getString("lastMessage");
-                                        if (lastMsg != null) {
-                                            String decryptedLastMsg = CryptoManager.decrypt(lastMsg);
-                                            lastMsg = (decryptedLastMsg != null) ? decryptedLastMsg : lastMsg;
+                                        String pName = doc.getString("name_" + mUid);
+                                        String name = pName != null ? pName : "Собеседник";
+
+                                        LocalMessage lastLocal = messageDao.getLastMessageForChat(chatId);
+                                        String displayMsg = (lastLocal != null) ? lastLocal.text : "Начните чат...";
+                                        if (lastLocal != null && lastLocal.senderId.equals(myUID)) {
+                                            displayMsg = "Вы: " + displayMsg;
                                         }
-                                        String id = doc.getId();
-                                        chatList.add(new ChatModel(name, id, lastMsg != null ? lastMsg : "", mUid));
+
+                                        chatList.add(new ChatModel(name, chatId, displayMsg, mUid));
                                     }
                                 }
-                                adapter.notifyDataSetChanged();
                             }
                         }
                         adapter.notifyDataSetChanged();
